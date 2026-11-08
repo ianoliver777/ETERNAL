@@ -29,13 +29,13 @@ void EternalAudioProcessor::processBlock(juce::AudioBuffer<float>& b,juce::MidiB
  juce::ignoreUnused(m);juce::ScopedNoDenormals nd;
  const int nc=juce::jmin(2,b.getNumChannels()),n=b.getNumSamples();
  if(nc==0)return;
- if(*parameters.getRawParameterValue("bypass")>0.5f){reduction.store(0);return;}
- auto sustain=*parameters.getRawParameterValue("sustain")*0.01f;
- auto blend=*parameters.getRawParameterValue("blend")*0.01f;
- auto grit=*parameters.getRawParameterValue("grit")*0.01f;
- auto treble=*parameters.getRawParameterValue("treble");
- auto volume=juce::Decibels::decibelsToGain(*parameters.getRawParameterValue("output"));
- bool ge=*parameters.getRawParameterValue("germanium")>0.5f;
+ if(parameters.getRawParameterValue("bypass")->load(std::memory_order_relaxed)>0.5f){reduction.store(0);return;}
+ auto sustain=parameters.getRawParameterValue("sustain")->load(std::memory_order_relaxed)*0.01f;
+ auto blend=parameters.getRawParameterValue("blend")->load(std::memory_order_relaxed)*0.01f;
+ auto grit=parameters.getRawParameterValue("grit")->load(std::memory_order_relaxed)*0.01f;
+ auto treble=parameters.getRawParameterValue("treble")->load(std::memory_order_relaxed);
+ auto volume=juce::Decibels::decibelsToGain(parameters.getRawParameterValue("output")->load(std::memory_order_relaxed));
+ bool ge=parameters.getRawParameterValue("germanium")->load(std::memory_order_relaxed)>0.5f;
  auto c=juce::dsp::IIR::Coefficients<float>::makeHighShelf(sampleRateHz,2000,0.7071,juce::Decibels::decibelsToGain(treble));
  for(auto& f:tone)f.coefficients=c;
  const float threshold=-8-34*sustain,ratio=2+6*sustain,makeup=juce::Decibels::decibelsToGain(1+12*sustain);
