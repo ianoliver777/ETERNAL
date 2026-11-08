@@ -20,7 +20,34 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build --config Release --parallel 4
-      - uses: actions/upload-artifact@v4
+      - name: Re-sign and verify complete macOS bundles
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="build/ETERNAL_artefacts/Release"
+          for bundle in "$root/VST3/ETERNAL.vst3" "$root/AU/ETERNAL.component" "$root/Standalone/ETERNAL.app"; do
+            if [[ -d "$bundle" ]]; then
+              echo "Re-signing completed bundle: $bundle"
+              /usr/bin/codesign --force --deep --sign - "$bundle"
+              /usr/bin/codesign --verify --deep --strict --verbose=2 "$bundle"
+            fi
+          done
+          test -d "$root/VST3/ETERNAL.vst3"
+          cd "$root"
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent VST3 ETERNAL-VST3.zip
+          if [[ -d AU ]]; then /usr/bin/ditto -c -k --sequesterRsrc --keepParent AU ETERNAL-AU.zip; fi
+          if [[ -d Standalone ]]; then /usr/bin/ditto -c -k --sequesterRsrc --keepParent Standalone ETERNAL-Standalone.zip; fi
+      - name: Upload macOS signed bundles
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: build/ETERNAL_artefacts/Release/*.zip
+          if-no-files-found: error
+      - name: Upload Windows bundles
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: build/ETERNAL_artefacts/Release/
