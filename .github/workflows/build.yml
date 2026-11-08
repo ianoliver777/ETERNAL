@@ -1,0 +1,27 @@
+name: Build ETERNAL
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            artifact: ETERNAL-macOS-AU-VST3
+          - os: windows-2022
+            artifact: ETERNAL-Windows-VST3
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: build/ETERNAL_artefacts/Release/
+          if-no-files-found: error
